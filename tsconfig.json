@@ -1,8 +1,7 @@
-
 {
   "compilerOptions": {
-    "target": "es2019",
-    "module": "commonjs",
+    "target": "ES2019",
+    "module": "CommonJS",
     "outDir": "dist",
     "rootDir": ".",
     "esModuleInterop": true,
@@ -11,4 +10,3 @@
   },
   "include": ["server.ts"]
 }
-
