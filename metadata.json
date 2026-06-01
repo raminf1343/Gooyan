@@ -1,0 +1,6 @@
+{
+  "name": "GOOYA",
+  "description": "استودیوی حرفه‌ای تولید محتوای صوتی با هوش مصنوعی جمینی. تولید دیالوگ، شبیه‌سازی صدا و مدیریت پروژه‌های صوتی.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

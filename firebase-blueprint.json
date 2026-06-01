@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "approved", "blocked"] },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "dailyLimit": { "type": "number", "enum": [30, 60, 600, 1800] }
+      },
+      "required": ["uid", "email", "createdAt", "status", "role"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin privileges marker",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "assignedBy": { "type": "string" },
+        "assignedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid"]
+    },
+    "DailyUsage": {
+      "title": "Daily Usage",
+      "description": "Tracks daily audio production consumption",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "totalSeconds": { "type": "number" }
+      },
+      "required": ["date", "totalSeconds"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Registered user profiles"
+    },
+    "/users/{userId}/usage/{date}": {
+      "schema": "DailyUsage",
+      "description": "Daily consumption tracking"
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "List of admin UIDs"
+    }
+  }
+}

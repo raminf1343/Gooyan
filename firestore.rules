@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Admin bootstrap check + DB check
+    // Verified email is mandatory for bootstrap
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'raminf1343@gmail.com') ||
+        (request.auth.token.email == 'eib.vancouver@gmail.com') ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Collections ---
+
+    match /users/{userId} {
+        function isValidUser(data) {
+          return data.uid is string && data.uid.size() <= 128 &&
+                 data.email is string && data.email.size() <= 256 &&
+                 data.role in ['user', 'admin'] &&
+                 data.status in ['pending', 'approved', 'blocked'] &&
+                 (data.dailyLimit == null || data.dailyLimit in [10, 25, 30, 60, 120, 600, 1800]) &&
+                 (data.displayName == null || (data.displayName is string && data.displayName.size() <= 128)) &&
+                 (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1024));
+        }
+
+        allow list: if isAdmin();
+        allow get: if isOwner(userId) || isAdmin();
+        
+        allow create: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && 
+                         isValidUser(incoming()) && 
+                         incoming().uid == request.auth.uid &&
+                         (
+                           incoming().role == 'user' || 
+                           (incoming().role == 'admin' && (request.auth.token.email == 'raminf1343@gmail.com' || request.auth.token.email == 'eib.vancouver@gmail.com'))
+                         ) && 
+                         incoming().status == 'approved' &&
+                         (incoming().dailyLimit == 10 || incoming().dailyLimit == null) &&
+                         incoming().createdAt == request.time;
+
+        allow update: if (isOwner(userId) || isAdmin()) && isValidId(userId) && (
+          (isOwner(userId) && isValidUser(incoming()) && (
+            (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'lastLogin']))
+          )) ||
+          (isAdmin() && (
+            (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'role', 'lastLogin', 'dailyLimit']))
+          ))
+        ) && incoming().uid == existing().uid && incoming().email == existing().email;
+        
+        allow delete: if isAdmin();
+      }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn() && isValidId(adminId);
+      allow write: if isAdmin() && isValidId(adminId);
+    }
+
+    match /blacklist/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId}/usage/{date} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId) && 
+                               incoming().totalSeconds is number &&
+                               incoming().totalSeconds >= 0 &&
+                               incoming().date == date;
+    }
+
+    match /users/{userId}/productions {
+      allow read: if isOwner(userId) || isAdmin();
+      match /{prodId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId);
+      }
+    }
+  }
+}
